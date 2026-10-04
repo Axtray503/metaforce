@@ -1,0 +1,39 @@
+name: Build Metaforce iOS
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          brew install cmake python@3
+
+      - name: Configure CMake
+        run: |
+          mkdir build-ios
+          cd build-ios
+          cmake -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 ..
+
+      - name: Build with xcodebuild
+        run: |
+          cd build-ios
+          xcodebuild -project metaforce.xcodeproj -scheme metaforce -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Package to IPA
+        run: |
+          mkdir Payload
+          find build-ios -name "*.app" -type d | head -n 1 | xargs -I {} cp -r {} Payload/
+          zip -r Metaforce.ipa Payload/
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Metaforce-IPA
+          path: Metaforce.ipa
